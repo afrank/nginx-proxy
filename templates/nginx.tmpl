@@ -1,0 +1,35 @@
+{{range $dir := lsdir "/services/nginx-proxy"}}
+
+{{$filename := base $dir}}
+{{$custdir := printf "/services/nginx-proxy/%s/servers/" $filename}}
+{{if ne (len (ls $custdir)) 0}}
+upstream {{$filename}} {
+{{$custdir := printf "/services/nginx-proxy/%s/servers/" $filename}}{{range ls $custdir}}{{$key := printf "/services/nginx-proxy/%s/servers/%s" $filename .}}{{$value := getv $key}}
+    server {{$data := json $value}}{{$data.ip}}:{{$data.port}};
+{{end}}
+}
+{{else}}
+upstream {{$filename}} {
+    server localhost;
+}
+{{end}}
+
+
+{{$servernamedir := printf "/services/nginx-proxy/%s/root" $filename}}
+
+server {
+	listen 80;
+	server_name {{getv $servernamedir}};
+
+	client_max_body_size 400m;
+
+	location / {
+		proxy_pass http://{{$filename}};
+		proxy_redirect off;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Proto $scheme;
+	}
+}
+{{end}}
